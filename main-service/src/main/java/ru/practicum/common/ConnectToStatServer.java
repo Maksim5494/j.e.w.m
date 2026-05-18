@@ -15,9 +15,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ConnectToStatServer {
 
-    public static List<Long> getViews(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique,
+    public static List<Long> getViews(LocalDateTime start, LocalDateTime end, String uris, boolean unique,
                                       StatisticClient statisticClient) {
         ResponseEntity<List<StatisticResponse>> response = statisticClient.getStats(start, end, uris, unique);
+
 
         if (response.getStatusCode().is4xxClientError()) {
             log.warn("Bad request. Status code is {}", response.getStatusCode());
@@ -29,20 +30,22 @@ public class ConnectToStatServer {
             throw new ClientException("Internal server error statusCode is " + response.getStatusCode());
         }
 
-        List<StatisticResponse> body = response.getBody();
-        if (body == null) {
+        if (response.getBody() == null) {
             log.warn("Returned empty body");
-            return List.of();
+            throw new ClientException("Returned empty body");
         }
 
-        return body.stream()
+        List<StatisticResponse> statisticResponses = response.getBody();
+
+        return statisticResponses
+                .stream()
                 .map(StatisticResponse::getHits)
                 .collect(Collectors.toList());
     }
 
-    public static List<String> prepareUris(List<Long> ids) {
-        return ids.stream()
-                .map(id -> "/events/" + id)
-                .collect(Collectors.toList());
+    public static String prepareUris(List<Long> ids) {
+        return ids
+                .stream()
+                .map((id) -> "event/" + id).collect(Collectors.joining());
     }
 }

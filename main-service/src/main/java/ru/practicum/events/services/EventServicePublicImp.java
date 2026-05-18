@@ -101,7 +101,7 @@ public class EventServicePublicImp implements EventsServicePublic {
         EventRespFull eventFull = EventMapper.mapToEventRespFull(event);
         eventFull.setConfirmedRequests(confirmedRequests);
         List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
-                GeneralConstants.defaultEndTime, List.of(path),
+                GeneralConstants.defaultEndTime, path,
                 true, statisticClient);
         if (views.isEmpty()) {
             eventFull.setViews(0L);

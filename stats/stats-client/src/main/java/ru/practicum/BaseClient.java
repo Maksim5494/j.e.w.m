@@ -9,52 +9,57 @@ import org.springframework.web.client.RestTemplate;
 import java.util.List;
 import java.util.Map;
 
+
 @RequiredArgsConstructor
 public class BaseClient {
     protected final RestTemplate restTemplate;
 
-    protected <T> ResponseEntity<T> get(String uri,
-                                        @Nullable Map<String, Object> parameters,
-                                        Class<T> responseType) {
-        return sendRequest(uri, HttpMethod.GET, null, parameters, responseType);
+    protected ResponseEntity<Object> get(String uri, @Nullable Map<String, Object> parameters) {
+        return sendRequest(uri, HttpMethod.GET, null, parameters);
     }
 
-    protected <T, B> ResponseEntity<T> post(String uri, @Nullable B body,
-                                            @Nullable Map<String, Object> parameters,
-                                            Class<T> responseType) {
-        return sendRequest(uri, HttpMethod.POST, body, parameters, responseType);
+    protected <F> ResponseEntity<F> getList(String uri, @Nullable Map<String, Object> parameters,
+                                            ParameterizedTypeReference<F> type) {
+        return sendRequestForList(uri, HttpMethod.GET, null, parameters, type);
     }
 
-    protected <T> ResponseEntity<T> get(String uri,
-                                        @Nullable Map<String, Object> parameters,
-                                        ParameterizedTypeReference<T> responseType) {
-        return sendRequest(uri, HttpMethod.GET, null, parameters, responseType);
+    protected <T> ResponseEntity<Object> post(String uri, @Nullable T body,
+                                              @Nullable Map<String, Object> parameters) {
+        return sendRequest(uri, HttpMethod.POST, body, parameters);
     }
 
-    private <T, B> ResponseEntity<T> sendRequest(String uri, HttpMethod method,
-                                                 @Nullable B body,
-                                                 @Nullable Map<String, Object> parameters,
-                                                 Class<T> responseType) {
-        HttpEntity<B> request = new HttpEntity<>(body, defaultHeaders());
+    private <T, F> ResponseEntity<F> sendRequestForList(String uri, HttpMethod method,
+                                                        @Nullable T body,
+                                                        @Nullable Map<String, Object> parameters,
+                                                        ParameterizedTypeReference<F> type) {
+
+        HttpEntity<T> request = new HttpEntity<>(body, defaultHeaders());
+
+        ResponseEntity<F> response;
 
         if (parameters == null) {
-            return restTemplate.exchange(uri, method, request, responseType);
+            response = restTemplate.exchange(uri, method, request, type);
         } else {
-            return restTemplate.exchange(uri, method, request, responseType, parameters);
+            response = restTemplate.exchange(uri, method, request, type, parameters);
         }
+        return response;
     }
 
-    private <T, B> ResponseEntity<T> sendRequest(String uri, HttpMethod method,
-                                                 @Nullable B body,
-                                                 @Nullable Map<String, Object> parameters,
-                                                 ParameterizedTypeReference<T> responseType) {
-        HttpEntity<B> request = new HttpEntity<>(body, defaultHeaders());
+
+    private <T> ResponseEntity<Object> sendRequest(String uri, HttpMethod method,
+                                                   @Nullable T body,
+                                                   @Nullable Map<String, Object> parameters) {
+
+        HttpEntity<T> request = new HttpEntity<>(body, defaultHeaders());
+
+        ResponseEntity<Object> response;
 
         if (parameters == null) {
-            return restTemplate.exchange(uri, method, request, responseType);
+            response = restTemplate.exchange(uri, method, request, Object.class);
         } else {
-            return restTemplate.exchange(uri, method, request, responseType, parameters);
+            response = restTemplate.exchange(uri, method, request, Object.class, parameters);
         }
+        return response;
     }
 
     private HttpHeaders defaultHeaders() {
