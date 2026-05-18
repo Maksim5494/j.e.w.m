@@ -8,6 +8,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.GeneralConstants;
 import ru.practicum.events.dto.EventRespFull;
 import ru.practicum.events.dto.EventUpdate;
 import ru.practicum.events.services.EventsServiceAdmin;
@@ -40,8 +41,8 @@ public class EventAdminController {
             @RequestParam(value = "users", required = false) List<Long> users,
             @RequestParam(value = "states", required = false) List<String> states,
             @RequestParam(value = "categories", required = false) List<Integer> categories,
-            @RequestParam(value = "rangeStart", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
-            @RequestParam(value = "rangeEnd", required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
+            @RequestParam(value = "rangeStart", required = false) @DateTimeFormat(pattern = GeneralConstants.DATA_PATTERN) LocalDateTime rangeStart,
+            @RequestParam(value = "rangeEnd", required = false) @DateTimeFormat(pattern = GeneralConstants.DATA_PATTERN) LocalDateTime rangeEnd,
             @Min(0) @RequestParam(value = "from", defaultValue = "0") int from,
             @Min(0) @RequestParam(value = "size", defaultValue = "10") int size) {
 
