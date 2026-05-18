@@ -2,40 +2,59 @@ package ru.practicum;
 
 import jakarta.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
 
-
 @RequiredArgsConstructor
 public class BaseClient {
     protected final RestTemplate restTemplate;
 
-    protected ResponseEntity<Object> get(String uri, @Nullable Map<String, Object> parameters) {
-        return sendRequest(uri, HttpMethod.GET, null, parameters);
+    protected <T> ResponseEntity<T> get(String uri,
+                                        @Nullable Map<String, Object> parameters,
+                                        Class<T> responseType) {
+        return sendRequest(uri, HttpMethod.GET, null, parameters, responseType);
     }
 
-    protected <T> ResponseEntity<Object> post(String uri, @Nullable T body,
-                                              @Nullable Map<String, Object> parameters) {
-        return sendRequest(uri, HttpMethod.POST, body, parameters);
+    protected <T, B> ResponseEntity<T> post(String uri, @Nullable B body,
+                                            @Nullable Map<String, Object> parameters,
+                                            Class<T> responseType) {
+        return sendRequest(uri, HttpMethod.POST, body, parameters, responseType);
     }
 
-    private <T> ResponseEntity<Object> sendRequest(String uri, HttpMethod method,
-                                                   @Nullable T body,
-                                                   @Nullable Map<String, Object> parameters) {
+    protected <T> ResponseEntity<T> get(String uri,
+                                        @Nullable Map<String, Object> parameters,
+                                        ParameterizedTypeReference<T> responseType) {
+        return sendRequest(uri, HttpMethod.GET, null, parameters, responseType);
+    }
 
-        HttpEntity<T> request = new HttpEntity<>(body, defaultHeaders());
-
-        ResponseEntity<Object> response;
+    private <T, B> ResponseEntity<T> sendRequest(String uri, HttpMethod method,
+                                                 @Nullable B body,
+                                                 @Nullable Map<String, Object> parameters,
+                                                 Class<T> responseType) {
+        HttpEntity<B> request = new HttpEntity<>(body, defaultHeaders());
 
         if (parameters == null) {
-            response = restTemplate.exchange(uri, method, request, Object.class);
+            return restTemplate.exchange(uri, method, request, responseType);
         } else {
-            response = restTemplate.exchange(uri, method, request, Object.class, parameters);
+            return restTemplate.exchange(uri, method, request, responseType, parameters);
         }
-        return response;
+    }
+
+    private <T, B> ResponseEntity<T> sendRequest(String uri, HttpMethod method,
+                                                 @Nullable B body,
+                                                 @Nullable Map<String, Object> parameters,
+                                                 ParameterizedTypeReference<T> responseType) {
+        HttpEntity<B> request = new HttpEntity<>(body, defaultHeaders());
+
+        if (parameters == null) {
+            return restTemplate.exchange(uri, method, request, responseType);
+        } else {
+            return restTemplate.exchange(uri, method, request, responseType, parameters);
+        }
     }
 
     private HttpHeaders defaultHeaders() {

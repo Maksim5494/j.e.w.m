@@ -17,7 +17,7 @@ public class ConnectToStatServer {
 
     public static List<Long> getViews(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique,
                                       StatisticClient statisticClient) {
-        ResponseEntity<Object> response = statisticClient.getStats(start, end, uris, unique);
+        ResponseEntity<List<StatisticResponse>> response = statisticClient.getStats(start, end, uris, unique);
 
         if (response.getStatusCode().is4xxClientError()) {
             log.warn("Bad request. Status code is {}", response.getStatusCode());
@@ -29,15 +29,13 @@ public class ConnectToStatServer {
             throw new ClientException("Internal server error statusCode is " + response.getStatusCode());
         }
 
-        if (response.getBody() == null) {
+        List<StatisticResponse> body = response.getBody();
+        if (body == null) {
             log.warn("Returned empty body");
-            throw new ClientException("Returned empty body");
+            return List.of();
         }
 
-        @SuppressWarnings("unchecked")
-        List<StatisticResponse> statisticResponses = (List<StatisticResponse>) response.getBody();
-
-        return statisticResponses.stream()
+        return body.stream()
                 .map(StatisticResponse::getHits)
                 .collect(Collectors.toList());
     }
