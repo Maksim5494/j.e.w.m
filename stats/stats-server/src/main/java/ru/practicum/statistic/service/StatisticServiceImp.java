@@ -1,5 +1,6 @@
 package ru.practicum.statistic.service;
 
+import ru.practicum.GeneralConstants;
 import ru.practicum.dto.StatisticDto;
 import ru.practicum.dto.StatisticResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,9 +14,10 @@ import ru.practicum.statistic.model.Statistic;
 import ru.practicum.statistic.repository.AppRepository;
 import ru.practicum.statistic.repository.StatisticRepository;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -53,6 +55,14 @@ public class StatisticServiceImp implements StatisticService {
         return getStatsByAllIp(start, end, uris);
     }
 
+    private String decodeParameters(String parameter) {
+        return URLDecoder.decode(parameter, StandardCharsets.UTF_8);
+    }
+
+    private LocalDateTime convertToLocalDataTime(String dateTime) {
+        return LocalDateTime.parse(dateTime, GeneralConstants.DATE_FORMATTER);
+    }
+
     private List<StatisticResponse> getStatsByUniqueIp(LocalDateTime start, LocalDateTime end, List<String> uris) {
         return statisticRepository.findByUriInAndStartBetweenUniqueIp(uris, start, end);
     }
@@ -70,11 +80,10 @@ public class StatisticServiceImp implements StatisticService {
     }
 
     private App checkApp(String appName) {
-        Optional<App> app = appRepository.findByName(appName);
-        if (app.isEmpty()) {
-            log.warn("Adding app name is not existed. App name: {}", appName);
-            throw new NotFoundException("Bad required app name");
-        }
-        return app.get();
+        return appRepository.findByName(appName)
+                .orElseThrow(() -> {
+                    log.warn("Adding app name is not existed. App name: {}", appName);
+                    return new NotFoundException("Bad required app name");
+                });
     }
 }
