@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import ru.practicum.statistic.exceptions.NotFoundException;
-import ru.practicum.statistic.exceptions.ValidationException;
 import ru.practicum.statistic.mappers.StatisticMapper;
 import ru.practicum.statistic.model.App;
 import ru.practicum.statistic.model.Statistic;
@@ -16,7 +15,6 @@ import ru.practicum.statistic.repository.StatisticRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +33,7 @@ public class StatisticServiceImp implements StatisticService {
 
     @Override
     public List<StatisticResponse> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
-        validateDates(start, end);
+
         if (unique) {
             if (uris == null) {
                 log.info("Finding stats for unique IP and for all URI");
@@ -71,22 +69,10 @@ public class StatisticServiceImp implements StatisticService {
     }
 
     private App checkApp(String appName) {
-        Optional<App> app = appRepository.findByName(appName);
-        if (app.isEmpty()) {
-            log.warn("Adding app name is not existed. App name: {}", appName);
-            throw new NotFoundException("Bad required app name");
-        }
-        return app.get();
-    }
-
-    private void validateDates(LocalDateTime start, LocalDateTime end) {
-        if (start == null || end == null) {
-            return;
-        }
-        if (start.isAfter(end)) {
-            log.warn("Start is after end");
-            throw new ValidationException("Start is after end");
-        }
-
+        return appRepository.findByName(appName)
+                .orElseThrow(() -> {
+                    log.warn("Adding app name is not existed. App name: {}", appName);
+                    return new NotFoundException("Bad required app name");
+                });
     }
 }
