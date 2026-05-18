@@ -118,7 +118,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
         EventRespFull eventRespFull = EventMapper.mapToEventRespFull(event);
         eventRespFull.setConfirmedRequests(confirmedRequests);
         List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
-                GeneralConstants.defaultEndTime, path, true, statisticClient);
+                GeneralConstants.defaultEndTime, List.of(path), true, statisticClient);
         if (views.isEmpty()) {
             eventRespFull.setViews(0L);
             return eventRespFull;
