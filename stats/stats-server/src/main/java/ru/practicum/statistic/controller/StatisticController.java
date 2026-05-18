@@ -45,10 +45,4 @@ public class StatisticController {
 
         return statisticService.getStats(start, end, uris, unique);
     }
-
-    private LocalDateTime convertToLocalDataTime(String dataTime) {
-        return LocalDateTime.parse(dataTime, GeneralConstants.DATE_FORMATTER);
-    }
-
-
 }
