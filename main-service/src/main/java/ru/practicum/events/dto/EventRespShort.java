@@ -7,7 +7,6 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
-import ru.practicum.GeneralConstants;
 import ru.practicum.categories.model.Category;
 import ru.practicum.users.model.User;
 
@@ -30,7 +29,7 @@ public class EventRespShort {
     private Long confirmedRequests;
 
     @NotNull(message = "event date must be existed")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
 
     @NotNull
