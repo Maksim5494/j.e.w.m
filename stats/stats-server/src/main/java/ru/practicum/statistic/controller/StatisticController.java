@@ -40,7 +40,7 @@ public class StatisticController {
             @RequestParam(value = "uris", required = false) List<String> uris,
             @RequestParam(value = "unique", required = false, defaultValue = "false") boolean unique) {
 
-        log.info("Statistic Controller, getStats, parameters: start {}, end {}, uris {}, unique {}",
+        log.info("StatisticController, getStats, parameters: start {}, end {}, uris {}, unique {}",
                 start, end, uris, unique);
 
         return statisticService.getStats(start, end, uris, unique);
