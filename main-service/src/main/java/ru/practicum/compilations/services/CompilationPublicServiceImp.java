@@ -11,6 +11,7 @@ import ru.practicum.compilations.dto.EventByCompId;
 import ru.practicum.compilations.model.Compilation;
 import ru.practicum.compilations.repository.CompilationRepository;
 import ru.practicum.compilations.repository.EventByCompilationRepository;
+import ru.practicum.constant.PaginationConstants;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.events.EventMapper;
 import ru.practicum.events.EventRepository;
@@ -47,10 +48,9 @@ public class CompilationPublicServiceImp implements CompilationPublicService {
 
     @Override
     public List<CompilationResponse> getCompilations(boolean pinned, int from, int size) {
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
-        //Find all compilations
         Map<Integer, Compilation> compilationMap = compilationRepository.findAll(pageable)
                 .stream()
                 .collect(Collectors.toMap(Compilation::getId, Function.identity()));

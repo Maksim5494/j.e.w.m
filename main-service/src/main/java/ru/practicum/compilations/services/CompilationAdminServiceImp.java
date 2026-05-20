@@ -28,6 +28,7 @@ public class CompilationAdminServiceImp implements CompilationAdminService {
     private final EventByCompilationRepository eventByCompilationRepository;
     private final EventRepository eventRepository;
     @Override
+
     public CompilationResponse addCompilation(CompilationRequest compilationRequest) {
         if (compilationRequest.getPinned() == null) {
             compilationRequest.setPinned(false);
@@ -47,7 +48,6 @@ public class CompilationAdminServiceImp implements CompilationAdminService {
                 .map((id) -> new EventsByCompilation(new CompositeKeyForEventByComp(compilationId, id)))
                 .toList();
 
-        //Save in events_by_compilations
         eventByCompilationRepository.saveAll(eventsByCompilations);
 
         List<EventRespShort> events = eventRepository.findByIdIn(compilationRequest.getEvents())
