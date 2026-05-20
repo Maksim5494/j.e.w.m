@@ -1,4 +1,4 @@
-package ru.practicum.constant;
+package ru.practicum.common;
 
 public final class PaginationConstants {
 

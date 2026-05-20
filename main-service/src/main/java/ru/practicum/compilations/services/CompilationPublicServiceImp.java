@@ -11,7 +11,7 @@ import ru.practicum.compilations.dto.EventByCompId;
 import ru.practicum.compilations.model.Compilation;
 import ru.practicum.compilations.repository.CompilationRepository;
 import ru.practicum.compilations.repository.EventByCompilationRepository;
-import ru.practicum.constant.PaginationConstants;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.events.EventMapper;
 import ru.practicum.events.EventRepository;

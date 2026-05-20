@@ -9,7 +9,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ru.practicum.categories.dto.CategoryDto;
 import ru.practicum.categories.model.Category;
-import ru.practicum.constant.PaginationConstants;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.NotFoundException;
 
 import java.util.Collection;
