@@ -27,8 +27,8 @@ public class CompilationAdminServiceImp implements CompilationAdminService {
     private final CompilationRepository compilationRepository;
     private final EventByCompilationRepository eventByCompilationRepository;
     private final EventRepository eventRepository;
-    @Override
 
+    @Override
     public CompilationResponse addCompilation(CompilationRequest compilationRequest) {
         if (compilationRequest.getPinned() == null) {
             compilationRequest.setPinned(false);
