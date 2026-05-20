@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
 import ru.practicum.categories.model.Category;
+import ru.practicum.common.GeneralConstants;
 import ru.practicum.events.model.Location;
 import ru.practicum.users.model.User;
 
@@ -31,7 +32,7 @@ public class EventRespFull {
     private Long confirmedRequests;
 
     @NotNull(message = "Empty createdOn")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
     private LocalDateTime createdOn;
 
     @NotBlank(message = "empty description")
@@ -40,7 +41,7 @@ public class EventRespFull {
 
     @NotNull(message = "event date must be existed")
     @FutureOrPresent(message = "eventDate must be in future")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
     private LocalDateTime eventDate;
 
     @NotNull
@@ -56,7 +57,7 @@ public class EventRespFull {
     private Integer participantLimit;
 
     @NotNull(message = "empty publishedOn")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
     private LocalDateTime publishedOn;
 
     private Boolean requestModeration;
