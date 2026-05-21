@@ -5,8 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import ru.practicum.common.EventConstants;
-import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.ConflictException;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.categories.CategoriesRepository;
@@ -63,11 +61,11 @@ public class EventServicePrivateImp implements EventServicePrivate {
             eventRequest.setPaid(false);
         }
         if (eventRequest.getParticipantLimit() == null) {
-            eventRequest.setParticipantLimit(EventConstants.ZERO_PARTICIPANT_LIMIT);
+            eventRequest.setParticipantLimit(0);
         }
 
         validateEventDate(eventRequest.getEventDate());
-        addLocation(eventRequest.getLocation());
+        addLocation(eventRequest.getLocation()); //Adding locations to database because location is separated entity
         Event addingEvent = EventMapper.mapToEvent(eventRequest);
         addingEvent.setInitiator(validateAndGetUser(userId));
         addingEvent.setCategory(validateAndGetCategory(eventRequest.getCategory()));
@@ -80,7 +78,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
 
     @Override
     public Collection<EventRespShort> getUsersEvents(long userId, int from, int size) {
-        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
+        int startPage = from > 0 ? (from / size) : 0;
         Pageable pageable = PageRequest.of(startPage, size);
 
         List<EventRespShort> events = eventRepository.findByInitiatorId(userId, pageable)
@@ -100,14 +98,14 @@ public class EventServicePrivateImp implements EventServicePrivate {
 
         for (int i = 0; i < events.size(); i++) {
 
-            if ((!views.isEmpty()) && (views.get(i) != EventConstants.ZERO_VIEWS)) {
+            if ((!views.isEmpty()) && (views.get(i) != 0)) {
                 events.get(i).setViews(views.get(i));
             } else {
-                events.get(i).setViews(EventConstants.ZERO_VIEWS);
+                events.get(i).setViews(0L);
             }
             events.get(i)
                     .setConfirmedRequests(confirmedRequestsByEvents
-                            .getOrDefault(events.get(i).getId(), EventConstants.ZERO_VIEWS));
+                            .getOrDefault(events.get(i).getId(), 0L));
         }
         return events;
     }
@@ -122,7 +120,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
         List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
                 GeneralConstants.defaultEndTime, path, true, statisticClient);
         if (views.isEmpty()) {
-            eventRespFull.setViews(EventConstants.ZERO_VIEWS);
+            eventRespFull.setViews(0L);
             return eventRespFull;
         }
         eventRespFull.setViews(views.get(0));
@@ -160,16 +158,16 @@ public class EventServicePrivateImp implements EventServicePrivate {
     public RequestResponse approveRequests(RequestsForConfirmation requestsForConfirmation,
                                            long userId,
                                            long eventId) {
-        Event event = validateAndGetEvent(eventId);
+        Event event = validateAndGetEvent(eventId); //checking event availability
 
         List<Requests> requests = requestRepository
-                .findByIdInAndEventId(requestsForConfirmation.getRequestIds(), eventId);
+                .findByIdInAndEventId(requestsForConfirmation.getRequestIds(), eventId); //Updating requests for event
 
-        checkRequestStatus(requests);
+        checkRequestStatus(requests); //Checking request`s status cause all requests should be PENDING  either CONFLICT
 
-        int participants = countParticipants(eventId);
-        checkParticipantsLimit(event.getParticipantLimit(), participants);
-        int freeSlots = event.getParticipantLimit() - participants;
+        int participants = countParticipants(eventId); //Approved participants
+        checkParticipantsLimit(event.getParticipantLimit(), participants); //Check possibility to add
+        int freeSlots = event.getParticipantLimit() - participants; //Amount participants who can be added
 
         if (freeSlots >= requests.size()) {
             List<RequestDto> approvedRequest = requestRepository.saveAll(setStatusToRequests(RequestStatus
@@ -219,18 +217,19 @@ public class EventServicePrivateImp implements EventServicePrivate {
     }
 
     private int countParticipants(long eventId) {
-        return (int) requestRepository.countByEventIdAndStatus(eventId,
+        return requestRepository.countByEventIdAndStatus(eventId,
                 String.valueOf(RequestStatus.CONFIRMED));
     }
 
     private void checkParticipantsLimit(long participantsLimit, long participants) {
-        if (participantsLimit < (participants + EventConstants.PARTICIPANT_LIMIT_INCREMENT)) {
+        if (participantsLimit < (participants + 1)) {
             log.warn("Unable to add request. ParticipantLimit {} less then request amount {}",
-                    participantsLimit, (participants + EventConstants.PARTICIPANT_LIMIT_INCREMENT));
+                    participantsLimit, (participants + 1));
             throw new ConflictException("Exceeded requesters amount");
         }
     }
 
+    //Two pointers to checking request`s status
     private void checkRequestStatus(List<Requests> request) {
         int leftIdx = 0;
         int rightIdx = request.size() - 1;
@@ -257,10 +256,9 @@ public class EventServicePrivateImp implements EventServicePrivate {
     }
 
     private void validateEventDate(LocalDateTime eventDate) {
-        if (eventDate.isBefore(LocalDateTime.now().plusHours(EventConstants.EVENT_DATE_MIN_HOURS_OFFSET))) {
-            log.warn("Event data ({}) is before then now + {} hours", eventDate, EventConstants.EVENT_DATE_MIN_HOURS_OFFSET);
-            throw new ConflictException("Event data " + eventDate + " is before then now + " +
-                    EventConstants.EVENT_DATE_MIN_HOURS_OFFSET + " hours");
+        if (eventDate.isBefore(LocalDateTime.now().plusHours(2))) {
+            log.warn("Event data ({}) is before then now + 2 hours", eventDate);
+            throw new ConflictException("Event data " + eventDate + " is before then now + 2 hours");
         }
     }
 

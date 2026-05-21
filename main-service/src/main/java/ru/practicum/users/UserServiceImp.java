@@ -8,7 +8,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.errors.ValidationException;
 import ru.practicum.users.dto.UserDto;
@@ -35,7 +34,7 @@ public class UserServiceImp implements UserService {
     public Collection<UserDto> getUsers(Collection<Integer> ids, int from, int size) {
         validateFromAndSize(from, size);
         Sort sortDyId = Sort.by(Sort.Direction.ASC, "id");
-        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
+        int startPage = from > 0 ? (from / size) : 0;
         Pageable pageable = PageRequest.of(startPage, size, sortDyId);
 
         if (ids == null) {
