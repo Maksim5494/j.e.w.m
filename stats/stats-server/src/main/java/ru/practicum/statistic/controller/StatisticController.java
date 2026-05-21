@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 
 import ru.practicum.statistic.service.StatisticService;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -32,17 +34,22 @@ public class StatisticController {
 
     @GetMapping("/stats")
     @ResponseStatus(HttpStatus.OK)
-    public List<StatisticResponse> getStats(
-            @RequestParam("start")
-            @DateTimeFormat(pattern = GeneralConstants.DATA_PATTERN) LocalDateTime start,
-            @RequestParam("end")
-            @DateTimeFormat(pattern = GeneralConstants.DATA_PATTERN) LocalDateTime end,
-            @RequestParam(value = "uris", required = false) List<String> uris,
-            @RequestParam(value = "unique", required = false, defaultValue = "false") boolean unique) {
-
+    public List<StatisticResponse> getStats(@RequestParam("start") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") String start,
+                                            @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") String end,
+                                            @RequestParam(required = false, value = "uris") List<String> uris,
+                                            @RequestParam(required = false, value = "unique") boolean unique) {
         log.info("Statistic Controller, getStats, parameters: start {}, end {}, uris {}, unique {}",
                 start, end, uris, unique);
+        LocalDateTime startDataTime = convertToLocalDataTime(decodeParameters(start));
+        LocalDateTime endDataTime = convertToLocalDataTime(decodeParameters(end));
+        return statisticService.getStats(startDataTime, endDataTime, uris, unique);
+    }
 
-        return statisticService.getStats(start, end, uris, unique);
+    private String decodeParameters(String parameter) {
+        return URLDecoder.decode(parameter, StandardCharsets.UTF_8);
+    }
+
+    private LocalDateTime convertToLocalDataTime(String dataTime) {
+        return LocalDateTime.parse(dataTime, GeneralConstants.DATE_FORMATTER);
     }
 }
