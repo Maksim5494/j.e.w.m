@@ -80,7 +80,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
 
     @Override
     public Collection<EventRespShort> getUsersEvents(long userId, int from, int size) {
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
         Pageable pageable = PageRequest.of(startPage, size);
 
         List<EventRespShort> events = eventRepository.findByInitiatorId(userId, pageable)

@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -34,7 +36,7 @@ public class UserServiceImp implements UserService {
     public Collection<UserDto> getUsers(Collection<Integer> ids, int from, int size) {
         validateFromAndSize(from, size);
         Sort sortDyId = Sort.by(Sort.Direction.ASC, "id");
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
         Pageable pageable = PageRequest.of(startPage, size, sortDyId);
 
         if (ids == null) {

@@ -30,6 +30,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -86,7 +88,7 @@ public class SubscriptionsServiceImp implements SubscriptionsService {
 
     @Override
     public List<EventRespShort> getUsersEvents(long userId, int from, int size) {
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
         Pageable pageable = PageRequest.of(startPage, size);
         List<EventRespShort> events = eventRepository
                 .findByInitiatorIdAndState(userId, String.valueOf(EventStates.PUBLISHED), pageable)

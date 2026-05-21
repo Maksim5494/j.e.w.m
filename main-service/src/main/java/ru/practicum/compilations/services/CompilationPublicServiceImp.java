@@ -21,6 +21,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
+
 
 @Service
 @RequiredArgsConstructor
@@ -47,7 +49,7 @@ public class CompilationPublicServiceImp implements CompilationPublicService {
 
     @Override
     public List<CompilationResponse> getCompilations(boolean pinned, int from, int size) {
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
         Pageable pageable = PageRequest.of(startPage, size);
 
         //Find all compilations

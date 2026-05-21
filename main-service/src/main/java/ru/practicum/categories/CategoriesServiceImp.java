@@ -15,6 +15,8 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -44,7 +46,7 @@ public class CategoriesServiceImp implements CategoriesService {
     @Override
     public Collection<CategoryDto> getAllCategories(int from, int size) {
         Sort sortById = Sort.by(Sort.Direction.ASC, "id");
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
         Pageable pageable = PageRequest.of(startPage, size, sortById);
         return categoriesRepository.findAll(pageable)
                 .stream()

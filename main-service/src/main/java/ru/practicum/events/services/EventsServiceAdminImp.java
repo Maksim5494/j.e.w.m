@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -79,7 +81,7 @@ public class EventsServiceAdminImp implements EventsServiceAdmin {
                                                                      int from,
                                                                      int size) {
         validateDates(rangeStart, rangeEnd);
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
         Pageable pageable = PageRequest.of(startPage, size);
 
         if (states == null) {
