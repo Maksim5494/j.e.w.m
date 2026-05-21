@@ -28,19 +28,16 @@ public class CompilationAdminServiceImp implements CompilationAdminService {
     private final EventByCompilationRepository eventByCompilationRepository;
     private final EventRepository eventRepository;
 
-    //Data stores normalized in two tables. 1 - compilation (id, title, pinned),
-    // 2 - events_by_compilations (compilation_id, event_id)
     @Override
     public CompilationResponse addCompilation(CompilationRequest compilationRequest) {
         if (compilationRequest.getPinned() == null) {
             compilationRequest.setPinned(false);
         }
 
-        //Save to compilation table
         Compilation savedCompilation = compilationRepository
                 .save(CompilationMapper.mapToCompilation(compilationRequest));
 
-        int compilationId = savedCompilation.getId(); //returned compilation_id
+        int compilationId = savedCompilation.getId();
 
         if (compilationRequest.getEvents() == null) {
             return CompilationMapper.mapToCompilationResponse(savedCompilation, List.of());
