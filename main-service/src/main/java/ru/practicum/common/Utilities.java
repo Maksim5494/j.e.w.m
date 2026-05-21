@@ -29,7 +29,6 @@ public class Utilities {
         return eventRespShorts;
     }
 
-    //Method checks type after generics to return particular type to avoid unchecked cast
     public static <T> List<T> checkTypes(List<?> list, Class<T> clazz) {
         List<T> result = new ArrayList<>();
         for (Object item : list) {

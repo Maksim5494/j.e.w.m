@@ -28,7 +28,7 @@ public class RequestServiceImp implements RequestService {
 
     @Override
     public RequestDto addRequest(long eventId, long userId) {
-        Event event = validateEvent(eventId); //Check event
+        Event event = validateEvent(eventId);
         User user = validateUser(userId);
         checkAbilityToAddRequest(event, userId, eventId);
         Requests addingRequest = Requests
@@ -37,7 +37,7 @@ public class RequestServiceImp implements RequestService {
                 .build();
 
         addingRequest.setEvent(event);
-        addingRequest.setRequester(user); //Check and set user
+        addingRequest.setRequester(user);
 
         addingRequest.setStatus(String.valueOf(RequestStatus.PENDING));
 
