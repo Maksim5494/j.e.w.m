@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import ru.practicum.common.Utilities;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.ConflictException;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.errors.ValidationException;
@@ -18,7 +18,6 @@ import ru.practicum.events.EventRepository;
 import ru.practicum.events.EventStates;
 import ru.practicum.events.LocationRepository;
 import ru.practicum.events.dto.EventRespFull;
-import ru.practicum.events.dto.EventRespShort;
 import ru.practicum.events.dto.EventUpdate;
 import ru.practicum.events.model.Event;
 import ru.practicum.events.model.Location;
@@ -79,7 +78,7 @@ public class EventsServiceAdminImp implements EventsServiceAdmin {
                                                                      int from,
                                                                      int size) {
         validateDates(rangeStart, rangeEnd);
-        int startPage = from > 0 ? (from / size) : 0;
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
         if (states == null) {
@@ -118,9 +117,18 @@ public class EventsServiceAdminImp implements EventsServiceAdmin {
                 GeneralConstants.defaultEndTime,
                 ConnectToStatServer.prepareUris(eventsIds), true, statisticClient);
 
-        List<? extends EventRespShort> events =
-                Utilities.addViewsAndConfirmedRequests(eventRespFulls, confirmedRequestsByEvents, views);
-        return Utilities.checkTypes(events, EventRespFull.class);
+        for (int i = 0; i < eventRespFulls.size(); i++) {
+
+            if ((!views.isEmpty()) && (views.get(i) != 0)) {
+                eventRespFulls.get(i).setViews(views.get(i));
+            } else {
+                eventRespFulls.get(i).setViews(0L);
+            }
+            eventRespFulls.get(i)
+                    .setConfirmedRequests(confirmedRequestsByEvents
+                            .getOrDefault(eventRespFulls.get(i).getId(), 0L));
+        }
+        return eventRespFulls;
     }
 
     private void addLocation(Location location) {

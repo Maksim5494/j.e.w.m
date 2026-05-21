@@ -1,7 +1,6 @@
 package ru.practicum.statistic;
 
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.stereotype.Service;
 import ru.practicum.GeneralConstants;
 import ru.practicum.dto.StatisticDto;
 import jakarta.annotation.Nullable;
@@ -19,15 +18,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Service
 public class StatisticClient extends BaseClient {
 
     public StatisticClient(String serverUrl, RestTemplateBuilder builder) {
-        super(
-                builder
-                        .uriTemplateHandler(new DefaultUriBuilderFactory(serverUrl))
-                        .requestFactory(() -> new HttpComponentsClientHttpRequestFactory())
-                        .build());
+        super(builder
+                .uriTemplateHandler(new DefaultUriBuilderFactory(serverUrl))
+                .requestFactory(() -> new HttpComponentsClientHttpRequestFactory())
+                .build());
     }
 
     public ResponseEntity<List<StatisticResponse>> getStats(LocalDateTime start, LocalDateTime end,

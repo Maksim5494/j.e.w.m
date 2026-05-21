@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
+import ru.practicum.common.GeneralConstants;
 import ru.practicum.events.model.Location;
 
 import java.time.LocalDateTime;
@@ -34,7 +35,7 @@ public class EventRequest {
 
     @NotNull(message = "event date must be existed")
     @FutureOrPresent(message = "eventDate must be in future")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
     private LocalDateTime eventDate;
 
     @NotNull(message = "Location must be existed")
@@ -51,7 +52,7 @@ public class EventRequest {
     @Length(min = 3, max = 120)
     private String title;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
     private LocalDateTime createdOn;
 
     private String state;
