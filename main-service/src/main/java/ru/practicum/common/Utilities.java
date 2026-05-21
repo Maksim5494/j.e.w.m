@@ -8,10 +8,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static ru.practicum.common.EventConstants.ZERO_VIEWS;
+
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class Utilities {
 
-    //Method allows to handle EventRespShort or EventRespFull
     public static List<? extends EventRespShort> addViewsAndConfirmedRequests(List<? extends EventRespShort> eventRespShorts,
                                                                               Map<Long, Long> confirmedRequests,
                                                                               List<Long> views) {
@@ -19,11 +20,11 @@ public class Utilities {
             if ((!views.isEmpty()) && (views.get(i) != 0)) {
                 eventRespShorts.get(i).setViews(views.get(i));
             } else {
-                eventRespShorts.get(i).setViews(0L);
+                eventRespShorts.get(i).setViews(ZERO_VIEWS);
             }
             eventRespShorts.get(i)
                     .setConfirmedRequests(confirmedRequests
-                            .getOrDefault(eventRespShorts.get(i).getId(), 0L));
+                            .getOrDefault(eventRespShorts.get(i).getId(), ZERO_VIEWS));
         }
         return eventRespShorts;
     }

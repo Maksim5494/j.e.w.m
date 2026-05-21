@@ -6,10 +6,11 @@ import jakarta.validation.constraints.Min;
 import lombok.Builder;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
-import ru.practicum.common.GeneralConstants;
 import ru.practicum.events.model.Location;
 
 import java.time.LocalDateTime;
+
+import static ru.practicum.common.GeneralConstants.DATA_PATTERN;
 
 @Data
 @Builder
@@ -28,7 +29,7 @@ public class EventUpdate {
     private Long initiator;
 
     @FutureOrPresent(message = "eventDate must be in future")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATA_PATTERN)
     private LocalDateTime eventDate;
 
     private Location location;
@@ -43,7 +44,7 @@ public class EventUpdate {
     @Length(min = 3, max = 120)
     private String title;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATA_PATTERN)
     private LocalDateTime createdOn;
 
     private String stateAction;

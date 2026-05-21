@@ -2,11 +2,10 @@ package ru.practicum.events.services;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.event.EventConstants;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import ru.practicum.common.EventConstants;
 import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.errors.ValidationException;
@@ -20,12 +19,14 @@ import ru.practicum.events.dto.EventRespShort;
 import ru.practicum.events.model.Event;
 import ru.practicum.requests.RequestRepository;
 import ru.practicum.requests.RequestStatus;
+import ru.practicum.requests.dto.EventIdByRequestsCount;
 import ru.practicum.statistic.StatisticClient;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static ru.practicum.common.EventConstants.ZERO_VIEWS;
 
 @Service
 @RequiredArgsConstructor
@@ -38,23 +39,24 @@ public class EventServicePublicImp implements EventsServicePublic {
 
     @Override
     public Collection<EventRespShort> searchEvents(String text, List<Integer> categories, Boolean paid,
-                                                   String rangeStartStr, String rangeEndStr,
-                                                   boolean onlyAvailable, String sort, int from, int size,
-                                                   String ip, String path) {
-        sendHit(path, ip);
-
-        LocalDateTime rangeStart = convertToLocalDataTime(decode(rangeStartStr));
-        LocalDateTime rangeEnd = convertToLocalDataTime(decode(rangeEndStr));
-
+                                                   LocalDateTime rangeStart, LocalDateTime rangeEnd,
+                                                   boolean onlyAvailable, String sort, int from, int size) {
         validateDates(rangeStart, rangeEnd);
-
         int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
-        if (text == null) text = "";
-        if (categories == null) categories = List.of();
-        if (rangeStart == null) rangeStart = LocalDateTime.now();
-        if (rangeEnd == null) rangeEnd = GeneralConstants.defaultEndTime;
+        if (text == null) {
+            text = "";
+        }
+        if (categories == null) {
+            categories = List.of();
+        }
+        if (rangeStart == null) {
+            rangeStart = LocalDateTime.now();
+        }
+        if (rangeEnd == null) {
+            rangeEnd = GeneralConstants.defaultEndTime;
+        }
 
         List<EventRespShort> events = eventRepository
                 .searchEvents(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable)
@@ -62,59 +64,63 @@ public class EventServicePublicImp implements EventsServicePublic {
                 .map(EventMapper::mapToEventRespShort)
                 .toList();
 
+        List<Long> eventsIds = events.stream()
+                .map(EventRespShort::getId)
+                .toList();
+
+        Map<Long, Long> confirmedRequestsByEvents = requestRepository
+                .countByEventIdInAndStatusGroupByEvent(eventsIds, String.valueOf(RequestStatus.CONFIRMED))
+                .stream()
+                .collect(Collectors.toMap(EventIdByRequestsCount::getEvent, EventIdByRequestsCount::getCount));
+
+        List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
+                GeneralConstants.defaultEndTime, ConnectToStatServer.prepareUris(eventsIds),
+                true, statisticClient);
+
+        for (int i = 0; i < events.size(); i++) {
+            if ((!views.isEmpty()) && (views.get(i) != 0)) {
+                events.get(i).setViews(views.get(i));
+            } else {
+                events.get(i).setViews(ZERO_VIEWS);
+            }
+            events.get(i)
+                    .setConfirmedRequests(confirmedRequestsByEvents
+                            .getOrDefault(events.get(i).getId(), ZERO_VIEWS));
+        }
         return events;
+
     }
 
     @Override
-    public EventRespFull getEvent(long eventId, String ip, String path) {
-        sendHit(path, ip);
-
+    public EventRespFull getEvent(long eventId, String path) {
         Event event = eventRepository.findByIdAndState(eventId, String.valueOf(EventStates.PUBLISHED))
-                .orElseThrow(() -> new NotFoundException("Event with id = " + eventId + " was not found"));
+                .orElseThrow(() -> {
+                    log.warn("Attempt to get unknown event");
+                    return new NotFoundException("Event with id = " + eventId + "was not found");
+                });
+
+        long confirmedRequests = requestRepository.countByEventIdAndStatus(eventId,
+                String.valueOf(RequestStatus.CONFIRMED));
 
         EventRespFull eventFull = EventMapper.mapToEventRespFull(event);
-
-        long confirmedRequests = requestRepository.countByEventIdAndStatus(eventId, String.valueOf(RequestStatus.CONFIRMED));
         eventFull.setConfirmedRequests(confirmedRequests);
-
         List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
-                GeneralConstants.defaultEndTime, path, true, statisticClient);
-
-        eventFull.setViews(views.isEmpty() ? EventConstants.ZERO_VIEWS : views.get(0));
+                GeneralConstants.defaultEndTime, path,
+                true, statisticClient);
+        if (views.isEmpty()) {
+            eventFull.setViews(ZERO_VIEWS);
+        }
+        eventFull.setViews(views.get(0));
         return eventFull;
     }
 
-    private void sendHit(String path, String ip) {
-        ru.practicum.dto.StatisticDto statisticDto = ru.practicum.dto.StatisticDto.builder()
-                .app("ewm-main-service")
-                .uri(path)
-                .ip(ip)
-                .timestamp(LocalDateTime.now())
-                .build();
-
-        try {
-            ResponseEntity<Object> response = statisticClient.addStat(statisticDto);
-            if (response.getStatusCode().isError()) {
-                log.error("Error sending statistics. Status: {}", response.getStatusCode());
-            }
-        } catch (Exception e) {
-            log.error("Failed to send statistics to server", e);
-        }
-    }
-
-    private String decode(String parameter) {
-        if (parameter == null) return null;
-        return URLDecoder.decode(parameter, StandardCharsets.UTF_8);
-    }
-
-    private LocalDateTime convertToLocalDataTime(String date) {
-        if (date == null) return null;
-        return LocalDateTime.parse(date, GeneralConstants.DATE_FORMATTER);
-    }
-
     private void validateDates(LocalDateTime start, LocalDateTime end) {
-        if (start != null && end != null && start.isAfter(end)) {
-            throw new ValidationException("Start time must be before end time");
+        if (start == null || end == null) {
+            return;
+        }
+        if (start.isAfter(end)) {
+            log.warn("Prohibited. Start is after end. Start: {}, end: {}", start, end);
+            throw new ValidationException("Event must be published");
         }
     }
 }

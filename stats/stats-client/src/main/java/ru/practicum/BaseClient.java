@@ -45,6 +45,7 @@ public class BaseClient {
         return response;
     }
 
+
     private <T> ResponseEntity<Object> sendRequest(String uri, HttpMethod method,
                                                    @Nullable T body,
                                                    @Nullable Map<String, Object> parameters) {

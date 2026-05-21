@@ -1,6 +1,5 @@
 package ru.practicum.statistic.service;
 
-import ru.practicum.GeneralConstants;
 import ru.practicum.dto.StatisticDto;
 import ru.practicum.dto.StatisticResponse;
 import lombok.RequiredArgsConstructor;
@@ -8,16 +7,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import ru.practicum.statistic.exceptions.NotFoundException;
+import ru.practicum.statistic.exceptions.ValidationException;
 import ru.practicum.statistic.mappers.StatisticMapper;
 import ru.practicum.statistic.model.App;
 import ru.practicum.statistic.model.Statistic;
 import ru.practicum.statistic.repository.AppRepository;
 import ru.practicum.statistic.repository.StatisticRepository;
 
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +35,7 @@ public class StatisticServiceImp implements StatisticService {
 
     @Override
     public List<StatisticResponse> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {
-
+        validateDates(start, end);
         if (unique) {
             if (uris == null) {
                 log.info("Finding stats for unique IP and for all URI");
@@ -53,14 +52,6 @@ public class StatisticServiceImp implements StatisticService {
 
         log.info("Finding stats for all IP and for List of URI");
         return getStatsByAllIp(start, end, uris);
-    }
-
-    private String decodeParameters(String parameter) {
-        return URLDecoder.decode(parameter, StandardCharsets.UTF_8);
-    }
-
-    private LocalDateTime convertToLocalDataTime(String dateTime) {
-        return LocalDateTime.parse(dateTime, GeneralConstants.DATE_FORMATTER);
     }
 
     private List<StatisticResponse> getStatsByUniqueIp(LocalDateTime start, LocalDateTime end, List<String> uris) {
@@ -80,10 +71,22 @@ public class StatisticServiceImp implements StatisticService {
     }
 
     private App checkApp(String appName) {
-        return appRepository.findByName(appName)
-                .orElseThrow(() -> {
-                    log.warn("Adding app name is not existed. App name: {}", appName);
-                    return new NotFoundException("Bad required app name");
-                });
+        Optional<App> app = appRepository.findByName(appName);
+        if (app.isEmpty()) {
+            log.warn("Adding app name is not existed. App name: {}", appName);
+            throw new NotFoundException("Bad required app name");
+        }
+        return app.get();
+    }
+
+    private void validateDates(LocalDateTime start, LocalDateTime end) {
+        if (start == null || end == null) {
+            return;
+        }
+        if (start.isAfter(end)) {
+            log.warn("Start is after end");
+            throw new ValidationException("Start is after end");
+        }
+
     }
 }
