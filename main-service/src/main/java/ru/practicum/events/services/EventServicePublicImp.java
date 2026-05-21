@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import ru.practicum.common.PaginationConstants;
+import ru.practicum.dto.StatisticDto;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.errors.ValidationException;
 import ru.practicum.common.ConnectToStatServer;
@@ -21,6 +23,8 @@ import ru.practicum.requests.RequestStatus;
 import ru.practicum.requests.dto.EventIdByRequestsCount;
 import ru.practicum.statistic.StatisticClient;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,9 +42,15 @@ public class EventServicePublicImp implements EventsServicePublic {
 
     @Override
     public Collection<EventRespShort> searchEvents(String text, List<Integer> categories, Boolean paid,
-                                                   LocalDateTime rangeStart, LocalDateTime rangeEnd,
-                                                   boolean onlyAvailable, String sort, int from, int size) {
-        validateDates(rangeStart, rangeEnd);
+                                                   String rangeStart, String rangeEnd, boolean onlyAvailable,
+                                                   String sort, int from, int size, String ip, String path) {
+        sendStatistic(ip, path);
+
+        LocalDateTime start = convertToLocalDateTime(decode(rangeStart));
+        LocalDateTime end = convertToLocalDateTime(decode(rangeEnd));
+
+        validateDates(start, end);
+
         int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
@@ -50,15 +60,15 @@ public class EventServicePublicImp implements EventsServicePublic {
         if (categories == null) {
             categories = List.of();
         }
-        if (rangeStart == null) {
-            rangeStart = LocalDateTime.now();
+        if (start == null) {
+            start = LocalDateTime.now();
         }
-        if (rangeEnd == null) {
-            rangeEnd = GeneralConstants.defaultEndTime;
+        if (end == null) {
+            end = GeneralConstants.defaultEndTime;
         }
 
         List<EventRespShort> events = eventRepository
-                .searchEvents(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable)
+                .searchEvents(text, categories, paid, start, end, onlyAvailable, pageable)
                 .stream()
                 .map(EventMapper::mapToEventRespShort)
                 .toList();
@@ -72,45 +82,75 @@ public class EventServicePublicImp implements EventsServicePublic {
                 .stream()
                 .collect(Collectors.toMap(EventIdByRequestsCount::getEvent, EventIdByRequestsCount::getCount));
 
-        List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
-                GeneralConstants.defaultEndTime, ConnectToStatServer.prepareUris(eventsIds),
-                true, statisticClient);
+        List<Long> views = ConnectToStatServer.getViews(
+                GeneralConstants.defaultStartTime,
+                GeneralConstants.defaultEndTime,
+                ConnectToStatServer.prepareUris(eventsIds),
+                true,
+                statisticClient
+        );
 
         for (int i = 0; i < events.size(); i++) {
-            if ((!views.isEmpty()) && (views.get(i) != 0)) {
-                events.get(i).setViews(views.get(i));
-            } else {
-                events.get(i).setViews(ZERO_VIEWS);
-            }
-            events.get(i)
-                    .setConfirmedRequests(confirmedRequestsByEvents
-                            .getOrDefault(events.get(i).getId(), ZERO_VIEWS));
+            events.get(i).setViews((!views.isEmpty() && views.get(i) != 0) ? views.get(i) : ZERO_VIEWS);
+            events.get(i).setConfirmedRequests(
+                    confirmedRequestsByEvents.getOrDefault(events.get(i).getId(), ZERO_VIEWS)
+            );
         }
-        return events;
 
+        return events;
     }
 
     @Override
-    public EventRespFull getEvent(long eventId, String path) {
+    public EventRespFull getEvent(long eventId, String ip, String path) {
+        sendStatistic(ip, path);
+
         Event event = eventRepository.findByIdAndState(eventId, String.valueOf(EventStates.PUBLISHED))
                 .orElseThrow(() -> {
                     log.warn("Attempt to get unknown event");
-                    return new NotFoundException("Event with id = " + eventId + "was not found");
+                    return new NotFoundException("Event with id = " + eventId + " was not found");
                 });
 
-        long confirmedRequests = requestRepository.countByEventIdAndStatus(eventId,
-                String.valueOf(RequestStatus.CONFIRMED));
+        long confirmedRequests = requestRepository.countByEventIdAndStatus(
+                eventId, String.valueOf(RequestStatus.CONFIRMED));
 
         EventRespFull eventFull = EventMapper.mapToEventRespFull(event);
         eventFull.setConfirmedRequests(confirmedRequests);
-        List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
-                GeneralConstants.defaultEndTime, path,
-                true, statisticClient);
-        if (views.isEmpty()) {
-            eventFull.setViews(ZERO_VIEWS);
-        }
-        eventFull.setViews(views.get(0));
+
+        List<Long> views = ConnectToStatServer.getViews(
+                GeneralConstants.defaultStartTime,
+                GeneralConstants.defaultEndTime,
+                path,
+                true,
+                statisticClient
+        );
+
+        eventFull.setViews(views.isEmpty() ? ZERO_VIEWS : views.get(0));
         return eventFull;
+    }
+
+    private void sendStatistic(String ip, String path) {
+        StatisticDto statisticDto = StatisticDto.builder()
+                .app("ewm-main-service")
+                .uri(path)
+                .ip(ip)
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        ResponseEntity<Object> response = statisticClient.addStat(statisticDto);
+
+        if (response.getStatusCode().is4xxClientError() || response.getStatusCode().is5xxServerError()) {
+            log.error("Status code: {}, responseBody: {}", response.getStatusCode(), response.getBody());
+        }
+
+        log.info("Statistic was sent to stats-server, statisticDto: {}", statisticDto);
+    }
+
+    private String decode(String parameter) {
+        return parameter == null ? null : URLDecoder.decode(parameter, StandardCharsets.UTF_8);
+    }
+
+    private LocalDateTime convertToLocalDateTime(String date) {
+        return date == null ? null : LocalDateTime.parse(date, GeneralConstants.DATE_FORMATTER);
     }
 
     private void validateDates(LocalDateTime start, LocalDateTime end) {
