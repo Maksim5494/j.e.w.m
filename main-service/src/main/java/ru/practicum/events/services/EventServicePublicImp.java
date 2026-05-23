@@ -46,29 +46,44 @@ public class EventServicePublicImp implements EventsServicePublic {
                                                    String sort, int from, int size, String ip, String path) {
         sendStatistic(ip, path);
 
-        LocalDateTime start = convertToLocalDateTime(decode(rangeStart));
-        LocalDateTime end = convertToLocalDateTime(decode(rangeEnd));
-        validateDates(start, end);
+        LocalDateTime[] range = parseAndValidateRange(rangeStart, rangeEnd);
+        LocalDateTime start = range[0];
+        LocalDateTime end = range[1];
 
         Pageable pageable = createPageable(from, size);
-
         String searchText = (text == null) ? "" : text;
         List<Integer> categoryIds = (categories == null) ? List.of() : categories;
+
         LocalDateTime effectiveStart = (start == null) ? LocalDateTime.now() : start;
         LocalDateTime effectiveEnd = (end == null) ? GeneralConstants.defaultEndTime : end;
 
-        List<EventRespShort> events = eventRepository
-                .searchEvents(searchText, categoryIds, paid, effectiveStart, effectiveEnd, onlyAvailable, pageable)
-                .stream()
-                .map(EventMapper::mapToEventRespShort)
-                .collect(Collectors.toList());
+        List<EventRespShort> events = fetchEventsFromRepository(
+                searchText, categoryIds, paid, effectiveStart, effectiveEnd, onlyAvailable, pageable);
 
         if (events.isEmpty()) {
             return Collections.emptyList();
         }
 
         enrichEventsWithData(events);
+
         return events;
+    }
+
+    private LocalDateTime[] parseAndValidateRange(String rangeStart, String rangeEnd) {
+        LocalDateTime start = convertToLocalDateTime(decode(rangeStart));
+        LocalDateTime end = convertToLocalDateTime(decode(rangeEnd));
+        validateDates(start, end);
+        return new LocalDateTime[]{start, end};
+    }
+
+    private List<EventRespShort> fetchEventsFromRepository(String text, List<Integer> categories, Boolean paid,
+                                                           LocalDateTime start, LocalDateTime end,
+                                                           boolean onlyAvailable, Pageable pageable) {
+        return eventRepository
+                .searchEvents(text, categories, paid, start, end, onlyAvailable, pageable)
+                .stream()
+                .map(EventMapper::mapToEventRespShort)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -82,7 +97,6 @@ public class EventServicePublicImp implements EventsServicePublic {
                 });
 
         EventRespFull eventFull = EventMapper.mapToEventRespFull(event);
-
         eventFull.setConfirmedRequests(fetchConfirmedRequestsCount(eventId));
         eventFull.setViews(fetchViews(path));
 
