@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.compilations.CompilationMapper;
 import ru.practicum.compilations.dto.CompilationResponse;
 import ru.practicum.compilations.dto.EventByCompId;
@@ -20,9 +21,6 @@ import ru.practicum.events.model.Event;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
-
 
 @Service
 @RequiredArgsConstructor
@@ -49,7 +47,7 @@ public class CompilationPublicServiceImp implements CompilationPublicService {
 
     @Override
     public List<CompilationResponse> getCompilations(boolean pinned, int from, int size) {
-        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
         //Find all compilations

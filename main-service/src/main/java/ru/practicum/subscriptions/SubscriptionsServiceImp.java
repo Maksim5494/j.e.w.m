@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import ru.practicum.common.ConnectToStatServer;
 import ru.practicum.common.GeneralConstants;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.common.Utilities;
 import ru.practicum.errors.ConflictException;
 import ru.practicum.errors.NotFoundException;
@@ -29,8 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
 
 @Service
 @RequiredArgsConstructor
@@ -88,7 +87,7 @@ public class SubscriptionsServiceImp implements SubscriptionsService {
 
     @Override
     public List<EventRespShort> getUsersEvents(long userId, int from, int size) {
-        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
         List<EventRespShort> events = eventRepository
                 .findByInitiatorIdAndState(userId, String.valueOf(EventStates.PUBLISHED), pageable)

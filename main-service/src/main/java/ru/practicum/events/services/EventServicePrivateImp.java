@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.ConflictException;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.categories.CategoriesRepository;
@@ -80,7 +81,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
 
     @Override
     public Collection<EventRespShort> getUsersEvents(long userId, int from, int size) {
-        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
         List<EventRespShort> events = eventRepository.findByInitiatorId(userId, pageable)
@@ -100,7 +101,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
 
         for (int i = 0; i < events.size(); i++) {
 
-            if ((!views.isEmpty()) && (views.get(i) != 0)) {
+            if ((!views.isEmpty()) && (views.get(i) != ZERO_VIEWS)) {
                 events.get(i).setViews(views.get(i));
             } else {
                 events.get(i).setViews(ZERO_VIEWS);

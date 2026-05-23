@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.common.Utilities;
 import ru.practicum.errors.ConflictException;
 import ru.practicum.errors.NotFoundException;
@@ -33,8 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
 
 @Service
 @RequiredArgsConstructor
@@ -81,7 +80,7 @@ public class EventsServiceAdminImp implements EventsServiceAdmin {
                                                                      int from,
                                                                      int size) {
         validateDates(rangeStart, rangeEnd);
-        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
         if (states == null) {

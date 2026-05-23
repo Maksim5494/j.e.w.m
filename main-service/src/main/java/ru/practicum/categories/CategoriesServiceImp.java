@@ -9,13 +9,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import ru.practicum.categories.dto.CategoryDto;
 import ru.practicum.categories.model.Category;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.NotFoundException;
 
 import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static ru.practicum.common.EventConstants.ZERO_PARTICIPANT_LIMIT;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +45,7 @@ public class CategoriesServiceImp implements CategoriesService {
     @Override
     public Collection<CategoryDto> getAllCategories(int from, int size) {
         Sort sortById = Sort.by(Sort.Direction.ASC, "id");
-        int startPage = from > 0 ? (from / size) : ZERO_PARTICIPANT_LIMIT;
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size, sortById);
         return categoriesRepository.findAll(pageable)
                 .stream()

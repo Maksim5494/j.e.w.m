@@ -17,7 +17,7 @@ public class Utilities {
                                                                               Map<Long, Long> confirmedRequests,
                                                                               List<Long> views) {
         for (int i = 0; i < eventRespShorts.size(); i++) {
-            if ((!views.isEmpty()) && (views.get(i) != 0)) {
+            if (!views.isEmpty() && views.get(i) != ZERO_VIEWS) {
                 eventRespShorts.get(i).setViews(views.get(i));
             } else {
                 eventRespShorts.get(i).setViews(ZERO_VIEWS);
