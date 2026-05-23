@@ -48,55 +48,26 @@ public class EventServicePublicImp implements EventsServicePublic {
 
         LocalDateTime start = convertToLocalDateTime(decode(rangeStart));
         LocalDateTime end = convertToLocalDateTime(decode(rangeEnd));
-
         validateDates(start, end);
 
-        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
-        Pageable pageable = PageRequest.of(startPage, size);
+        Pageable pageable = createPageable(from, size);
 
-        if (text == null) {
-            text = "";
-        }
-        if (categories == null) {
-            categories = List.of();
-        }
-        if (start == null) {
-            start = LocalDateTime.now();
-        }
-        if (end == null) {
-            end = GeneralConstants.defaultEndTime;
-        }
+        String searchText = (text == null) ? "" : text;
+        List<Integer> categoryIds = (categories == null) ? List.of() : categories;
+        LocalDateTime effectiveStart = (start == null) ? LocalDateTime.now() : start;
+        LocalDateTime effectiveEnd = (end == null) ? GeneralConstants.defaultEndTime : end;
 
         List<EventRespShort> events = eventRepository
-                .searchEvents(text, categories, paid, start, end, onlyAvailable, pageable)
+                .searchEvents(searchText, categoryIds, paid, effectiveStart, effectiveEnd, onlyAvailable, pageable)
                 .stream()
                 .map(EventMapper::mapToEventRespShort)
-                .toList();
+                .collect(Collectors.toList());
 
-        List<Long> eventsIds = events.stream()
-                .map(EventRespShort::getId)
-                .toList();
-
-        Map<Long, Long> confirmedRequestsByEvents = requestRepository
-                .countByEventIdInAndStatusGroupByEvent(eventsIds, String.valueOf(RequestStatus.CONFIRMED))
-                .stream()
-                .collect(Collectors.toMap(EventIdByRequestsCount::getEvent, EventIdByRequestsCount::getCount));
-
-        List<Long> views = ConnectToStatServer.getViews(
-                GeneralConstants.defaultStartTime,
-                GeneralConstants.defaultEndTime,
-                ConnectToStatServer.prepareUris(eventsIds),
-                true,
-                statisticClient
-        );
-
-        for (int i = 0; i < events.size(); i++) {
-            events.get(i).setViews((!views.isEmpty() && views.get(i) != 0) ? views.get(i) : ZERO_VIEWS);
-            events.get(i).setConfirmedRequests(
-                    confirmedRequestsByEvents.getOrDefault(events.get(i).getId(), ZERO_VIEWS)
-            );
+        if (events.isEmpty()) {
+            return Collections.emptyList();
         }
 
+        enrichEventsWithData(events);
         return events;
     }
 
@@ -106,16 +77,38 @@ public class EventServicePublicImp implements EventsServicePublic {
 
         Event event = eventRepository.findByIdAndState(eventId, String.valueOf(EventStates.PUBLISHED))
                 .orElseThrow(() -> {
-                    log.warn("Attempt to get unknown event");
+                    log.warn("Attempt to get unknown event id={}", eventId);
                     return new NotFoundException("Event with id = " + eventId + " was not found");
                 });
 
-        long confirmedRequests = requestRepository.countByEventIdAndStatus(
-                eventId, String.valueOf(RequestStatus.CONFIRMED));
-
         EventRespFull eventFull = EventMapper.mapToEventRespFull(event);
-        eventFull.setConfirmedRequests(confirmedRequests);
 
+        eventFull.setConfirmedRequests(fetchConfirmedRequestsCount(eventId));
+        eventFull.setViews(fetchViews(path));
+
+        return eventFull;
+    }
+
+    private void enrichEventsWithData(List<EventRespShort> events) {
+        List<Long> eventIds = events.stream()
+                .map(EventRespShort::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, Long> confirmedRequests = getConfirmedRequestsMap(eventIds);
+        Map<Long, Long> viewsMap = getViewsMap(eventIds);
+
+        for (EventRespShort event : events) {
+            event.setConfirmedRequests(confirmedRequests.getOrDefault(event.getId(), ZERO_VIEWS));
+            event.setViews(viewsMap.getOrDefault(event.getId(), ZERO_VIEWS));
+        }
+    }
+
+    private long fetchConfirmedRequestsCount(long eventId) {
+        return requestRepository.countByEventIdAndStatus(
+                eventId, String.valueOf(RequestStatus.CONFIRMED));
+    }
+
+    private long fetchViews(String path) {
         List<Long> views = ConnectToStatServer.getViews(
                 GeneralConstants.defaultStartTime,
                 GeneralConstants.defaultEndTime,
@@ -123,9 +116,36 @@ public class EventServicePublicImp implements EventsServicePublic {
                 true,
                 statisticClient
         );
+        return views.isEmpty() ? ZERO_VIEWS : views.get(0);
+    }
 
-        eventFull.setViews(views.isEmpty() ? ZERO_VIEWS : views.get(0));
-        return eventFull;
+    private Map<Long, Long> getConfirmedRequestsMap(List<Long> eventIds) {
+        return requestRepository
+                .countByEventIdInAndStatusGroupByEvent(eventIds, String.valueOf(RequestStatus.CONFIRMED))
+                .stream()
+                .collect(Collectors.toMap(EventIdByRequestsCount::getEvent, EventIdByRequestsCount::getCount));
+    }
+
+    private Map<Long, Long> getViewsMap(List<Long> eventIds) {
+        List<Long> views = ConnectToStatServer.getViews(
+                GeneralConstants.defaultStartTime,
+                GeneralConstants.defaultEndTime,
+                ConnectToStatServer.prepareUris(eventIds),
+                true,
+                statisticClient
+        );
+
+        Map<Long, Long> viewsMap = new HashMap<>();
+        for (int i = 0; i < eventIds.size(); i++) {
+            Long viewCount = (views != null && views.size() > i) ? views.get(i) : ZERO_VIEWS;
+            viewsMap.put(eventIds.get(i), viewCount);
+        }
+        return viewsMap;
+    }
+
+    private Pageable createPageable(int from, int size) {
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
+        return PageRequest.of(startPage, size);
     }
 
     private void sendStatistic(String ip, String path) {
@@ -136,13 +156,14 @@ public class EventServicePublicImp implements EventsServicePublic {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        ResponseEntity<Object> response = statisticClient.addStat(statisticDto);
-
-        if (response.getStatusCode().is4xxClientError() || response.getStatusCode().is5xxServerError()) {
-            log.error("Status code: {}, responseBody: {}", response.getStatusCode(), response.getBody());
+        try {
+            ResponseEntity<Object> response = statisticClient.addStat(statisticDto);
+            if (response.getStatusCode().isError()) {
+                log.error("Failed to send stats: {}", response.getStatusCode());
+            }
+        } catch (Exception e) {
+            log.error("Error connecting to stat-server: {}", e.getMessage());
         }
-
-        log.info("Statistic was sent to stats-server, statisticDto: {}", statisticDto);
     }
 
     private String decode(String parameter) {
@@ -154,12 +175,9 @@ public class EventServicePublicImp implements EventsServicePublic {
     }
 
     private void validateDates(LocalDateTime start, LocalDateTime end) {
-        if (start == null || end == null) {
-            return;
-        }
-        if (start.isAfter(end)) {
-            log.warn("Prohibited. Start is after end. Start: {}, end: {}", start, end);
-            throw new ValidationException("Event must be published");
+        if (start != null && end != null && start.isAfter(end)) {
+            log.warn("Validation failed: start {} is after end {}", start, end);
+            throw new ValidationException("Range start must be before range end");
         }
     }
 }

@@ -50,7 +50,6 @@ public class CompilationPublicServiceImp implements CompilationPublicService {
         int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
         Pageable pageable = PageRequest.of(startPage, size);
 
-        //Find all compilations
         Map<Integer, Compilation> compilationMap = compilationRepository.findAll(pageable)
                 .stream()
                 .collect(Collectors.toMap(Compilation::getId, Function.identity()));
