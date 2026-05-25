@@ -11,11 +11,12 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.events.dto.EventRespFull;
 import ru.practicum.events.dto.EventUpdate;
 import ru.practicum.events.services.EventsServiceAdmin;
-import ru.practicum.common.GeneralConstants;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+
+import static ru.practicum.common.GeneralConstants.DATA_PATTERN;
 
 @RestController
 @RequestMapping("/admin/events")
@@ -41,8 +42,8 @@ public class EventAdminController {
             @RequestParam(value = "users", required = false) List<Long> users,
             @RequestParam(value = "states", required = false) List<String> states,
             @RequestParam(value = "categories", required = false) List<Integer> categories,
-            @RequestParam(value = "rangeStart", required = false) @DateTimeFormat(pattern = GeneralConstants.DATA_PATTERN) LocalDateTime rangeStart,
-            @RequestParam(value = "rangeEnd", required = false) @DateTimeFormat(pattern = GeneralConstants.DATA_PATTERN) LocalDateTime rangeEnd,
+            @RequestParam(value = "rangeStart", required = false) @DateTimeFormat(pattern = DATA_PATTERN) LocalDateTime rangeStart,
+            @RequestParam(value = "rangeEnd", required = false) @DateTimeFormat(pattern = DATA_PATTERN) LocalDateTime rangeEnd,
             @Min(0) @RequestParam(value = "from", defaultValue = "0") int from,
             @Min(0) @RequestParam(value = "size", defaultValue = "10") int size) {
 

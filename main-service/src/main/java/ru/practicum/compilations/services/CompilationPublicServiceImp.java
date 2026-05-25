@@ -5,13 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import ru.practicum.common.PaginationConstants;
 import ru.practicum.compilations.CompilationMapper;
 import ru.practicum.compilations.dto.CompilationResponse;
 import ru.practicum.compilations.dto.EventByCompId;
 import ru.practicum.compilations.model.Compilation;
 import ru.practicum.compilations.repository.CompilationRepository;
 import ru.practicum.compilations.repository.EventByCompilationRepository;
-import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.events.EventMapper;
 import ru.practicum.events.EventRepository;
@@ -21,7 +21,6 @@ import ru.practicum.events.model.Event;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 
 @Service
 @RequiredArgsConstructor

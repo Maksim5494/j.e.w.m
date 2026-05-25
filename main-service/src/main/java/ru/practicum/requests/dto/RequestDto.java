@@ -5,9 +5,10 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
-import ru.practicum.common.GeneralConstants;
 
 import java.time.LocalDateTime;
+
+import static ru.practicum.common.GeneralConstants.DATA_PATTERN;
 
 @Data
 @Builder
@@ -15,7 +16,7 @@ public class RequestDto {
 
     private Long id;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATA_PATTERN)
     private LocalDateTime created;
 
     @NotNull(message = "event must be existed")

@@ -5,9 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 import lombok.Data;
-import ru.practicum.GeneralConstants;
 
 import java.time.LocalDateTime;
+
+import static ru.practicum.GeneralConstants.DATA_PATTERN;
 
 @Data
 @Builder
@@ -23,6 +24,6 @@ public class StatisticDto {
     private String ip;
 
     @NotNull(message = "empty timestamp")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = GeneralConstants.DATA_PATTERN)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATA_PATTERN)
     private LocalDateTime timestamp;
 }

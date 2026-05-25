@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface EventsServicePublic {
+
     Collection<EventRespShort> searchEvents(String text, List<Integer> categories, Boolean paid,
                                             String rangeStart, String rangeEnd, boolean onlyAvailable,
                                             String sort, int from, int size, String ip, String path);

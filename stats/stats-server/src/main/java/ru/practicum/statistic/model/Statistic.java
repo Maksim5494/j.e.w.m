@@ -9,6 +9,8 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+import static ru.practicum.GeneralConstants.DATA_PATTERN;
+
 @Entity
 @Table(name = "statistics")
 @Data
@@ -30,7 +32,7 @@ public class Statistic {
     private String ip;
 
     @NotNull
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = DATA_PATTERN)
     private LocalDateTime timestamp;
 
 

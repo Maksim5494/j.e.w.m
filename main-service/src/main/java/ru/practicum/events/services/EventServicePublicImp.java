@@ -6,8 +6,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import ru.practicum.common.EventConstants;
 import ru.practicum.common.PaginationConstants;
+import ru.practicum.dto.StatisticDto;
 import ru.practicum.errors.NotFoundException;
 import ru.practicum.errors.ValidationException;
 import ru.practicum.common.ConnectToStatServer;
@@ -20,12 +20,16 @@ import ru.practicum.events.dto.EventRespShort;
 import ru.practicum.events.model.Event;
 import ru.practicum.requests.RequestRepository;
 import ru.practicum.requests.RequestStatus;
+import ru.practicum.requests.dto.EventIdByRequestsCount;
 import ru.practicum.statistic.StatisticClient;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static ru.practicum.common.EventConstants.ZERO_VIEWS;
 
 @Service
 @RequiredArgsConstructor
@@ -38,54 +42,128 @@ public class EventServicePublicImp implements EventsServicePublic {
 
     @Override
     public Collection<EventRespShort> searchEvents(String text, List<Integer> categories, Boolean paid,
-                                                   String rangeStartStr, String rangeEndStr,
-                                                   boolean onlyAvailable, String sort, int from, int size,
-                                                   String ip, String path) {
-        sendHit(path, ip);
+                                                   String rangeStart, String rangeEnd, boolean onlyAvailable,
+                                                   String sort, int from, int size, String ip, String path) {
+        sendStatistic(ip, path);
 
-        LocalDateTime rangeStart = convertToLocalDataTime(decode(rangeStartStr));
-        LocalDateTime rangeEnd = convertToLocalDataTime(decode(rangeEndStr));
+        LocalDateTime[] range = parseAndValidateRange(rangeStart, rangeEnd);
+        LocalDateTime start = range[0];
+        LocalDateTime end = range[1];
 
-        validateDates(rangeStart, rangeEnd);
+        Pageable pageable = createPageable(from, size);
+        String searchText = (text == null) ? "" : text;
+        List<Integer> categoryIds = (categories == null) ? List.of() : categories;
 
-        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
-        Pageable pageable = PageRequest.of(startPage, size);
+        LocalDateTime effectiveStart = (start == null) ? LocalDateTime.now() : start;
+        LocalDateTime effectiveEnd = (end == null) ? GeneralConstants.defaultEndTime : end;
 
-        if (text == null) text = "";
-        if (categories == null) categories = List.of();
-        if (rangeStart == null) rangeStart = LocalDateTime.now();
-        if (rangeEnd == null) rangeEnd = GeneralConstants.defaultEndTime;
+        List<EventRespShort> events = fetchEventsFromRepository(
+                searchText, categoryIds, paid, effectiveStart, effectiveEnd, onlyAvailable, pageable);
 
-        List<EventRespShort> events = eventRepository
-                .searchEvents(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable)
-                .stream()
-                .map(EventMapper::mapToEventRespShort)
-                .toList();
+        if (events.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        enrichEventsWithData(events);
 
         return events;
     }
 
+    private LocalDateTime[] parseAndValidateRange(String rangeStart, String rangeEnd) {
+        LocalDateTime start = convertToLocalDateTime(decode(rangeStart));
+        LocalDateTime end = convertToLocalDateTime(decode(rangeEnd));
+        validateDates(start, end);
+        return new LocalDateTime[]{start, end};
+    }
+
+    private List<EventRespShort> fetchEventsFromRepository(String text, List<Integer> categories, Boolean paid,
+                                                           LocalDateTime start, LocalDateTime end,
+                                                           boolean onlyAvailable, Pageable pageable) {
+        return eventRepository
+                .searchEvents(text, categories, paid, start, end, onlyAvailable, pageable)
+                .stream()
+                .map(EventMapper::mapToEventRespShort)
+                .collect(Collectors.toList());
+    }
+
     @Override
     public EventRespFull getEvent(long eventId, String ip, String path) {
-        sendHit(path, ip);
+        sendStatistic(ip, path);
 
         Event event = eventRepository.findByIdAndState(eventId, String.valueOf(EventStates.PUBLISHED))
-                .orElseThrow(() -> new NotFoundException("Event with id = " + eventId + " was not found"));
+                .orElseThrow(() -> {
+                    log.warn("Attempt to get unknown event id={}", eventId);
+                    return new NotFoundException("Event with id = " + eventId + " was not found");
+                });
 
         EventRespFull eventFull = EventMapper.mapToEventRespFull(event);
+        eventFull.setConfirmedRequests(fetchConfirmedRequestsCount(eventId));
+        eventFull.setViews(fetchViews(path));
 
-        long confirmedRequests = requestRepository.countByEventIdAndStatus(eventId, String.valueOf(RequestStatus.CONFIRMED));
-        eventFull.setConfirmedRequests(confirmedRequests);
-
-        List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
-                GeneralConstants.defaultEndTime, path, true, statisticClient);
-
-        eventFull.setViews(views.isEmpty() ? EventConstants.ZERO_VIEWS : views.get(0));
         return eventFull;
     }
 
-    private void sendHit(String path, String ip) {
-        ru.practicum.dto.StatisticDto statisticDto = ru.practicum.dto.StatisticDto.builder()
+    private void enrichEventsWithData(List<EventRespShort> events) {
+        List<Long> eventIds = events.stream()
+                .map(EventRespShort::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, Long> confirmedRequests = getConfirmedRequestsMap(eventIds);
+        Map<Long, Long> viewsMap = getViewsMap(eventIds);
+
+        for (EventRespShort event : events) {
+            event.setConfirmedRequests(confirmedRequests.getOrDefault(event.getId(), ZERO_VIEWS));
+            event.setViews(viewsMap.getOrDefault(event.getId(), ZERO_VIEWS));
+        }
+    }
+
+    private long fetchConfirmedRequestsCount(long eventId) {
+        return requestRepository.countByEventIdAndStatus(
+                eventId, String.valueOf(RequestStatus.CONFIRMED));
+    }
+
+    private long fetchViews(String path) {
+        List<Long> views = ConnectToStatServer.getViews(
+                GeneralConstants.defaultStartTime,
+                GeneralConstants.defaultEndTime,
+                path,
+                true,
+                statisticClient
+        );
+        return views.isEmpty() ? ZERO_VIEWS : views.get(0);
+    }
+
+    private Map<Long, Long> getConfirmedRequestsMap(List<Long> eventIds) {
+        return requestRepository
+                .countByEventIdInAndStatusGroupByEvent(eventIds, String.valueOf(RequestStatus.CONFIRMED))
+                .stream()
+                .collect(Collectors.toMap(EventIdByRequestsCount::getEvent, EventIdByRequestsCount::getCount));
+    }
+
+    private Map<Long, Long> getViewsMap(List<Long> eventIds) {
+        List<Long> views = ConnectToStatServer.getViews(
+                GeneralConstants.defaultStartTime,
+                GeneralConstants.defaultEndTime,
+                ConnectToStatServer.prepareUris(eventIds),
+                true,
+                statisticClient
+        );
+
+        Map<Long, Long> viewsMap = new HashMap<>();
+        for (int i = 0; i < eventIds.size(); i++) {
+            Long viewCount = (views != null && views.size() > i) ? views.get(i) : ZERO_VIEWS;
+            viewsMap.put(eventIds.get(i), viewCount);
+        }
+        return viewsMap;
+    }
+
+    private Pageable createPageable(int from, int size) {
+        int startPage = from > 0 ? (from / size) : PaginationConstants.FIRST_PAGE_INDEX;
+        return PageRequest.of(startPage, size);
+    }
+
+    private void sendStatistic(String ip, String path) {
+        StatisticDto statisticDto = StatisticDto.builder()
                 .app("ewm-main-service")
                 .uri(path)
                 .ip(ip)
@@ -95,26 +173,25 @@ public class EventServicePublicImp implements EventsServicePublic {
         try {
             ResponseEntity<Object> response = statisticClient.addStat(statisticDto);
             if (response.getStatusCode().isError()) {
-                log.error("Error sending statistics. Status: {}", response.getStatusCode());
+                log.error("Failed to send stats: {}", response.getStatusCode());
             }
         } catch (Exception e) {
-            log.error("Failed to send statistics to server", e);
+            log.error("Error connecting to stat-server: {}", e.getMessage());
         }
     }
 
     private String decode(String parameter) {
-        if (parameter == null) return null;
-        return URLDecoder.decode(parameter, StandardCharsets.UTF_8);
+        return parameter == null ? null : URLDecoder.decode(parameter, StandardCharsets.UTF_8);
     }
 
-    private LocalDateTime convertToLocalDataTime(String date) {
-        if (date == null) return null;
-        return LocalDateTime.parse(date, GeneralConstants.DATE_FORMATTER);
+    private LocalDateTime convertToLocalDateTime(String date) {
+        return date == null ? null : LocalDateTime.parse(date, GeneralConstants.DATE_FORMATTER);
     }
 
     private void validateDates(LocalDateTime start, LocalDateTime end) {
         if (start != null && end != null && start.isAfter(end)) {
-            throw new ValidationException("Start time must be before end time");
+            log.warn("Validation failed: start {} is after end {}", start, end);
+            throw new ValidationException("Range start must be before range end");
         }
     }
 }

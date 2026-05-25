@@ -17,6 +17,8 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static ru.practicum.GeneralConstants.DATA_PATTERN;
+
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -34,8 +36,8 @@ public class StatisticController {
 
     @GetMapping("/stats")
     @ResponseStatus(HttpStatus.OK)
-    public List<StatisticResponse> getStats(@RequestParam("start") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") String start,
-                                            @RequestParam("end") @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") String end,
+    public List<StatisticResponse> getStats(@RequestParam("start") @DateTimeFormat(pattern = DATA_PATTERN) String start,
+                                            @RequestParam("end") @DateTimeFormat(pattern = DATA_PATTERN) String end,
                                             @RequestParam(required = false, value = "uris") List<String> uris,
                                             @RequestParam(required = false, value = "unique") boolean unique) {
         log.info("Statistic Controller, getStats, parameters: start {}, end {}, uris {}, unique {}",

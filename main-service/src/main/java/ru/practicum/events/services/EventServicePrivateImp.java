@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import ru.practicum.common.EventConstants;
 import ru.practicum.common.PaginationConstants;
 import ru.practicum.errors.ConflictException;
 import ru.practicum.errors.NotFoundException;
@@ -42,6 +41,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static ru.practicum.common.EventConstants.*;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -63,7 +64,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
             eventRequest.setPaid(false);
         }
         if (eventRequest.getParticipantLimit() == null) {
-            eventRequest.setParticipantLimit(EventConstants.ZERO_PARTICIPANT_LIMIT);
+            eventRequest.setParticipantLimit(0);
         }
 
         validateEventDate(eventRequest.getEventDate());
@@ -100,14 +101,14 @@ public class EventServicePrivateImp implements EventServicePrivate {
 
         for (int i = 0; i < events.size(); i++) {
 
-            if ((!views.isEmpty()) && (views.get(i) != EventConstants.ZERO_VIEWS)) {
+            if ((!views.isEmpty()) && (views.get(i) != ZERO_VIEWS)) {
                 events.get(i).setViews(views.get(i));
             } else {
-                events.get(i).setViews(EventConstants.ZERO_VIEWS);
+                events.get(i).setViews(ZERO_VIEWS);
             }
             events.get(i)
                     .setConfirmedRequests(confirmedRequestsByEvents
-                            .getOrDefault(events.get(i).getId(), EventConstants.ZERO_VIEWS));
+                            .getOrDefault(events.get(i).getId(), ZERO_VIEWS));
         }
         return events;
     }
@@ -122,7 +123,7 @@ public class EventServicePrivateImp implements EventServicePrivate {
         List<Long> views = ConnectToStatServer.getViews(GeneralConstants.defaultStartTime,
                 GeneralConstants.defaultEndTime, path, true, statisticClient);
         if (views.isEmpty()) {
-            eventRespFull.setViews(EventConstants.ZERO_VIEWS);
+            eventRespFull.setViews(ZERO_VIEWS);
             return eventRespFull;
         }
         eventRespFull.setViews(views.get(0));
@@ -219,14 +220,14 @@ public class EventServicePrivateImp implements EventServicePrivate {
     }
 
     private int countParticipants(long eventId) {
-        return (int) requestRepository.countByEventIdAndStatus(eventId,
+        return requestRepository.countByEventIdAndStatus(eventId,
                 String.valueOf(RequestStatus.CONFIRMED));
     }
 
     private void checkParticipantsLimit(long participantsLimit, long participants) {
-        if (participantsLimit < (participants + EventConstants.PARTICIPANT_LIMIT_INCREMENT)) {
+        if (participantsLimit < (participants + PARTICIPANT_LIMIT_INCREMENT)) {
             log.warn("Unable to add request. ParticipantLimit {} less then request amount {}",
-                    participantsLimit, (participants + EventConstants.PARTICIPANT_LIMIT_INCREMENT));
+                    participantsLimit, (participants + PARTICIPANT_LIMIT_INCREMENT));
             throw new ConflictException("Exceeded requesters amount");
         }
     }
@@ -257,10 +258,9 @@ public class EventServicePrivateImp implements EventServicePrivate {
     }
 
     private void validateEventDate(LocalDateTime eventDate) {
-        if (eventDate.isBefore(LocalDateTime.now().plusHours(EventConstants.EVENT_DATE_MIN_HOURS_OFFSET))) {
-            log.warn("Event data ({}) is before then now + {} hours", eventDate, EventConstants.EVENT_DATE_MIN_HOURS_OFFSET);
-            throw new ConflictException("Event data " + eventDate + " is before then now + " +
-                    EventConstants.EVENT_DATE_MIN_HOURS_OFFSET + " hours");
+        if (eventDate.isBefore(LocalDateTime.now().plusHours(EVENT_DATE_MIN_HOURS_OFFSET))) {
+            log.warn("Event data ({}) is before then now + 2 hours", eventDate);
+            throw new ConflictException("Event data " + eventDate + " is before then now + 2 hours");
         }
     }
 
